@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chef's Quest — Quantifiers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    font-family:'Nunito',sans-serif;
+    background:linear-gradient(160deg,#dfe7f5,#eef2fb);
+    color:#2a2f45;
+    overflow:hidden;
+    transition:background 0.9s ease;
+  }
+  #app{
+    height:100%;
+    max-width:680px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    padding:8px;
+  }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(255,255,255,0.7);
+    backdrop-filter:blur(4px);
+    border:2px solid #fff;
+    border-radius:16px;
+    padding:7px 12px;
+    box-shadow:0 4px 14px rgba(80,90,140,0.15);
+  }
+  .score-box{
+    display:flex;align-items:center;gap:6px;
+    font-family:'Comfortaa';font-weight:700;font-size:18px;
+    color:#e8820c;white-space:nowrap;
+  }
+  #score{transition:transform .2s;display:inline-block;min-width:34px;text-align:right;}
+  .score-pop{transform:scale(1.45);}
+  .flavour-wrap{flex:1;min-width:90px;}
+  .flavour-label{font-size:11px;font-weight:700;color:#7a5230;display:flex;justify-content:space-between;margin-bottom:2px;}
+  .flavour-track{height:13px;background:#e7dccb;border-radius:8px;overflow:hidden;border:1px solid #d6c5a6;}
+  .flavour-fill{height:100%;width:0%;border-radius:8px;
+    background:linear-gradient(90deg,#ffd36b,#ff9f43,#ff6f3c);
+    transition:width .6s cubic-bezier(.3,1.3,.5,1);}
+  .stage-pill{
+    font-size:12px;font-weight:800;background:#5b6cff;color:#fff;
+    border-radius:20px;padding:4px 10px;white-space:nowrap;
+  }
+
+  /* ---------- MAIN ---------- */
+  #main{
+    flex:1 1 auto;
+    overflow-y:auto;
+    margin-top:8px;
+    padding:6px 4px 14px;
+    display:flex;
+    flex-direction:column;
+  }
+  .card{
+    background:rgba(255,255,255,0.92);
+    border:2px solid #fff;
+    border-radius:20px;
+    padding:16px 16px;
+    box-shadow:0 6px 20px rgba(80,90,140,0.13);
+  }
+  h1{font-family:'Comfortaa';font-size:24px;color:#3b3f63;text-align:center;line-height:1.2;}
+  h2{font-family:'Comfortaa';font-size:18px;color:#4a4f78;margin-bottom:4px;}
+  p.lead{font-size:15px;color:#555a7a;line-height:1.5;}
+  .hint{font-size:13px;color:#8a6a3a;font-weight:700;}
+
+  .sentence{
+    font-size:20px;font-weight:700;line-height:1.5;
+    background:#f3f6ff;border-radius:14px;padding:14px;margin:12px 0;text-align:center;
+  }
+  .blank{display:inline-block;min-width:62px;border-bottom:3px dotted #5b6cff;color:#5b6cff;}
+
+  /* options */
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:6px;}
+  .opt{
+    font-family:'Nunito';font-size:17px;font-weight:700;
+    background:#fff;border:2px solid #c9d2f5;color:#3b3f63;
+    border-radius:14px;padding:13px 8px;cursor:pointer;
+    transition:transform .1s, background .15s, border-color .15s;
+  }
+  .opt:hover{border-color:#5b6cff;transform:translateY(-2px);}
+  .opt.ok{background:#d6f5d6;border-color:#3aaf3a;color:#1e7a1e;}
+  .opt.bad{background:#ffd9d9;border-color:#e04949;color:#a22020;}
+  .opt:disabled{cursor:default;opacity:.85;}
+  .opts.two{grid-template-columns:1fr 1fr;}
+
+  /* typed input */
+  .typed-row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center;}
+  input[type=text]{
+    font-family:'Nunito';font-size:18px;font-weight:700;
+    border:2px solid #c9d2f5;border-radius:12px;padding:11px 14px;
+    width:200px;max-width:60vw;outline:none;text-align:center;
+  }
+  input[type=text]:focus{border-color:#5b6cff;}
+
+  /* buttons */
+  .btn{
+    font-family:'Comfortaa';font-weight:700;font-size:16px;
+    background:#5b6cff;color:#fff;border:none;border-radius:14px;
+    padding:12px 22px;cursor:pointer;box-shadow:0 4px 0 #3a47c9;
+    transition:transform .08s;
+  }
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 #3a47c9;}
+  .btn.ghost{background:#eef0fb;color:#5b6cff;box-shadow:0 4px 0 #cdd3f0;}
+  .btn-row{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap;}
+
+  /* sentence builder */
+  .build-target{
+    min-height:54px;background:#f3f6ff;border-radius:14px;border:2px dashed #b9c4ee;
+    display:flex;flex-wrap:wrap;gap:6px;padding:9px;margin:10px 0;align-items:center;
+  }
+  .pool{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px;}
+  .chip{
+    font-size:17px;font-weight:700;background:#fff;border:2px solid #c9d2f5;
+    border-radius:11px;padding:9px 13px;cursor:pointer;color:#3b3f63;
+    transition:transform .1s;
+  }
+  .chip:hover{transform:translateY(-2px);border-color:#5b6cff;}
+  .chip.used{opacity:.25;pointer-events:none;}
+  .chip.inSlot{background:#e7ecff;border-color:#5b6cff;color:#3a47c9;}
+
+  /* memory */
+  .mem-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;}
+  .mem-card{
+    aspect-ratio:3/2.4;border-radius:13px;cursor:pointer;position:relative;
+    perspective:600px;
+  }
+  .mem-inner{position:absolute;inset:0;transition:transform .4s;transform-style:preserve-3d;}
+  .mem-card.flip .mem-inner{transform:rotateY(180deg);}
+  .mem-face{position:absolute;inset:0;border-radius:13px;display:flex;align-items:center;justify-content:center;
+    text-align:center;padding:4px;backface-visibility:hidden;font-weight:800;}
+  .mem-front{background:linear-gradient(150deg,#6c7bff,#8b6cff);color:#fff;font-size:26px;}
+  .mem-back{background:#fff;border:2px solid #c9d2f5;color:#3b3f63;font-size:14px;transform:rotateY(180deg);}
+  .mem-card.matched .mem-back{background:#d6f5d6;border-color:#3aaf3a;color:#1e7a1e;}
+  @media(max-width:430px){.mem-back{font-size:12px;}.mem-front{font-size:20px;}}
+
+  /* boss */
+  .boss-stage{text-align:center;}
+  .boss-svg{width:120px;height:120px;margin:0 auto;display:block;}
+  .hp-track{height:18px;background:#e7c9c9;border-radius:10px;overflow:hidden;border:2px solid #d49a9a;max-width:260px;margin:8px auto;}
+  .hp-fill{height:100%;background:linear-gradient(90deg,#ff5a5a,#c81e1e);transition:width .5s;}
+  .shake{animation:shake .4s;}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+
+  .chef{width:84px;height:84px;display:block;margin:0 auto 6px;}
+
+  /* feedback toast */
+  #toast{
+    position:absolute;left:50%;top:46%;transform:translate(-50%,-50%) scale(.6);
+    font-family:'Comfortaa';font-weight:700;font-size:26px;padding:14px 26px;border-radius:18px;
+    opacity:0;pointer-events:none;transition:transform .25s,opacity .25s;z-index:40;text-align:center;
+    box-shadow:0 8px 30px rgba(0,0,0,.18);
+  }
+  #toast.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
+  #toast.good{background:#3aaf3a;color:#fff;}
+  #toast.bad{background:#e04949;color:#fff;font-size:20px;}
+
+  /* explanation modal */
+  #overlay{position:absolute;inset:0;background:rgba(40,44,70,.45);display:none;
+    align-items:center;justify-content:center;z-index:50;padding:14px;}
+  #overlay.show{display:flex;}
+  .modal{background:#fff;border-radius:20px;padding:20px;max-width:380px;width:100%;
+    box-shadow:0 14px 40px rgba(0,0,0,.25);position:relative;text-align:center;}
+  .modal .x{position:absolute;top:8px;right:12px;font-size:26px;color:#aaa;cursor:pointer;
+    line-height:1;font-weight:700;}
+  .modal .x:hover{color:#e04949;}
+  .modal h3{font-family:'Comfortaa';color:#e04949;font-size:20px;margin-bottom:8px;}
+  .modal .correct{font-size:20px;font-weight:800;color:#1e7a1e;background:#e8f8e8;border-radius:12px;
+    padding:8px 12px;margin:8px 0;display:inline-block;}
+  .modal .exp{font-size:14px;color:#555a7a;line-height:1.5;margin:6px 0 14px;}
+
+  /* floating +10 */
+  .plus10{position:absolute;font-family:'Comfortaa';font-weight:700;color:#e8820c;font-size:22px;
+    pointer-events:none;z-index:45;animation:floatUp 1s ease-out forwards;}
+  @keyframes floatUp{0%{opacity:0;transform:translateY(0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translateY(-46px) scale(1.1)}}
+
+  /* victory */
+  .stars{font-size:42px;letter-spacing:6px;}
+  .star-dim{filter:grayscale(1);opacity:.3;}
+
+  .small{font-size:13px;color:#7a809e;}
+  .center{text-align:center;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="hud">
+    <div class="score-box">⭐ <span id="score">0</span></div>
+    <div class="flavour-wrap">
+      <div class="flavour-label"><span>🍲 Вкус</span><span id="flavPct">0%</span></div>
+      <div class="flavour-track"><div class="flavour-fill" id="flavFill"></div></div>
+    </div>
+    <div class="stage-pill" id="stagePill">Старт</div>
+  </div>
+
+  <div id="main"></div>
+
+  <div id="toast"></div>
+
+  <div id="overlay">
+    <div class="modal">
+      <span class="x" id="modalX">×</span>
+      <h3 id="modalTitle">Неверно</h3>
+      <div>Правильный ответ:</div>
+      <div class="correct" id="modalCorrect"></div>
+      <div class="exp" id="modalExp"></div>
+      <button class="btn" id="modalNext">Понятно →</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============================== STATE ============================== */
+let score=0, correctCount=0;
+const TARGET_CORRECT=35;          // clean run total
+const FLAV_PER=100/TARGET_CORRECT;
+
+const main=document.getElementById('main');
+const scoreEl=document.getElementById('score');
+const flavFill=document.getElementById('flavFill');
+const flavPct=document.getElementById('flavPct');
+const stagePill=document.getElementById('stagePill');
+const toast=document.getElementById('toast');
+const overlay=document.getElementById('overlay');
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
+function norm(s){return s.toLowerCase().trim().replace(/[.,!?;:]/g,'').replace(/\s+/g,' ');}
+
+/* ---- scoring / flavour / background ---- */
+function bgFor(t){
+  const top=[Math.round(223+(255-223)*t),Math.round(231+(225-231)*t),Math.round(245+(176-245)*t)];
+  const bot=[Math.round(238+(255-238)*t),Math.round(242+(200-242)*t),Math.round(251+(140-251)*t)];
+  document.body.style.background=`linear-gradient(160deg,rgb(${top.join(',')}),rgb(${bot.join(',')}))`;
+}
+function addPoint(x,y){
+  score+=10;correctCount++;
+  scoreEl.textContent=score;
+  scoreEl.classList.add('score-pop');setTimeout(()=>scoreEl.classList.remove('score-pop'),200);
+  const pct=Math.min(100,Math.round(correctCount*FLAV_PER));
+  flavFill.style.width=pct+'%';flavPct.textContent=pct+'%';
+  bgFor(pct/100);
+  if(x!=null){const f=document.createElement('div');f.className='plus10';f.textContent='+10';
+    f.style.left=x+'px';f.style.top=y+'px';document.getElementById('app').appendChild(f);
+    setTimeout(()=>f.remove(),1000);}
+}
+function showGood(msg){
+  toast.className='good show';toast.textContent=msg||'ВЕРНО! +10 ⭐️';
+  setTimeout(()=>toast.classList.remove('show'),1100);
+}
+function showBadToast(){toast.className='bad show';toast.textContent='Попробуй ещё раз';setTimeout(()=>toast.classList.remove('show'),1100);}
+
+/* ---- explanation modal (stays until closed) ---- */
+let modalCb=null;
+function showExplain(correct,exp,cb){
+  document.getElementById('modalCorrect').textContent=correct;
+  document.getElementById('modalExp').textContent=exp||'';
+  modalCb=cb;overlay.classList.add('show');
+}
+function closeModal(){overlay.classList.remove('show');const cb=modalCb;modalCb=null;if(cb)cb();}
+document.getElementById('modalX').onclick=closeModal;
+document.getElementById('modalNext').onclick=closeModal;
+
+/* ============================== CONTENT ============================== */
+const memoryPairs=[
+  ["a lot of","много"],
+  ["plenty of","более чем достаточно"],
+  ["a few","несколько (исчисл.)"],
+  ["a little","немного (неисчисл.)"],
+  ["too many","слишком много (исчисл.)"],
+  ["none","нисколько (без сущ.)"]
+];
+
+const mcq=[
+  {s:"There aren't ___ cafés near here.",o:["many","much","a little","less","plenty of","no"],a:"many",
+   e:"После 'aren't' с исчисляемым существительным во мн. числе — many."},
+  {s:"I don't eat ___ chocolate.",o:["much","many","a few","fewer","too many","loads of"],a:"much",
+   e:"much — с неисчисляемыми существительными в отрицаниях."},
+  {s:"Don't run. We have ___ time.",o:["plenty of","too many","a few","fewer","very few","any"],a:"plenty of",
+   e:"plenty of = более чем достаточно (в утвердительных предложениях)."},
+  {s:"There's ___ milk in the fridge. We have no eggs.",o:["no","any","many","a few","fewer","much"],a:"no",
+   e:"no + существительное с утвердительным глаголом ('s = is) для нулевого количества."},
+  {s:"I'm so busy that I have ___ time for myself.",o:["very little","very few","many","a few","fewer","too many"],a:"very little",
+   e:"very little = очень мало, с неисчисляемыми существительными."},
+  {s:"There are ___ tourists and too many cars.",o:["too many","too much","a little","less","enough","none"],a:"too many",
+   e:"too many + исчисляемые существительные во множественном числе."}
+];
+
+const tf=[
+  {s:"We use much in negative sentences with uncountable nouns.",t:true,
+   e:"Верно: much — неисчисляемые, обычно в отрицаниях и вопросах."},
+  {s:"We use many with uncountable nouns.",t:false,
+   e:"Неверно: many — с исчисляемыми во мн. ч. Для неисчисляемых — much."},
+  {s:"The comparative of little is less.",t:true,
+   e:"Верно: little → less."},
+  {s:"The comparative of few is less.",t:false,
+   e:"Неверно: few → fewer (less — для неисчисляемых)."},
+  {s:"We use too much with plural countable nouns.",t:false,
+   e:"Неверно: too much — неисчисляемые; too many — исчисляемые."},
+  {s:"We use none in short answers, without a noun.",t:true,
+   e:"Верно: none — без существительного, в кратких ответах."}
+];
+
+const typed=[
+  {s:"Nina has ___ clothes.",hint:"(много, мн. ч.)",accept:["lots of","a lot of","loads of"],show:"lots of",
+   e:"Большое количество в утвердительном предложении: lots of / a lot of / loads of."},
+  {s:"There aren't ___ parks.",hint:"(достаточно)",accept:["enough"],show:"enough",
+   e:"(not) enough перед существительным = недостаточно."},
+  {s:"I don't eat ___ chocolate.",hint:"(неисчисл., отрицание)",accept:["much"],show:"much",
+   e:"much — неисчисляемые существительные в отрицаниях."},
+  {s:"Sarah has ___ friends.",hint:"(очень мало, исчисл.)",accept:["very few"],show:"very few",
+   e:"very few = очень мало, с исчисляемыми существительными."},
+  {s:"How many eggs do we have? — ___.",hint:"(нисколько, краткий ответ)",accept:["none"],show:"none",
+   e:"none — в кратких ответах без существительного."},
+  {s:"This city is ___ big and it's too noisy.",hint:"(слишком)",accept:["too"],show:"too",
+   e:"too + прилагательное/наречие = слишком."}
+];
+
+const builder=[
+  {c:["There","aren't","enough","parks"],ru:"Парков недостаточно."},
+  {c:["I","don't","eat","much","chocolate"],ru:"Я ем мало шоколада."},
+  {c:["We","have","plenty","of","time"],ru:"У нас более чем достаточно времени."},
+  {c:["There","are","too","many","tourists"],ru:"Здесь слишком много туристов."},
+  {c:["I","have","very","little","time"],ru:"У меня очень мало времени."}
+];
+
+const bossPool=[
+  {s:"We have ___ eggs.",o:["no","any","many","a few"],a:"no",e:"no + сущ. с утвердительным глаголом."},
+  {s:"I don't have ___ eggs.",o:["any","no","much","a few"],a:"any",e:"any + сущ. с отрицательным глаголом."},
+  {s:"She has ___ free time than before.",o:["less","fewer","few","little"],a:"less",e:"less — сравнит. от little (неисчисл.)."},
+  {s:"There are ___ flights in winter than in summer.",o:["fewer","less","much","many"],a:"fewer",e:"fewer — сравнит. от few (исчисл.)."},
+  {s:"You aren't walking fast ___.",o:["enough","too","too much","very"],a:"enough",e:"enough ставится после наречия/прилагательного."},
+  {s:"James eats ___.",o:["a lot","a lot of","much of","many"],a:"a lot",e:"a lot — когда нет существительного."},
+  {s:"Do you watch ___ TV?",o:["much","many","a few","fewer"],a:"much",e:"much — неисчисл., в вопросах."},
+  {s:"I've been there ___ times.",o:["loads of","much","a little","less"],a:"loads of",e:"loads of — много (неформально), с исчисл. мн. ч."}
+];
+
+/* ============================== SVG ART ============================== */
+const CHEF=`<svg class="chef" viewBox="0 0 100 100"><ellipse cx="50" cy="34" rx="26" ry="16" fill="#fff" stroke="#dfe3f2" stroke-width="2"/><rect x="30" y="30" width="40" height="10" fill="#fff" stroke="#dfe3f2" stroke-width="2"/><circle cx="50" cy="58" r="20" fill="#ffd9b3"/><circle cx="43" cy="56" r="3" fill="#3b3f63"/><circle cx="57" cy="56" r="3" fill="#3b3f63"/><path d="M43 66 Q50 72 57 66" stroke="#c97b4a" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="36" cy="63" r="3.5" fill="#ffb38a" opacity=".7"/><circle cx="64" cy="63" r="3.5" fill="#ffb38a" opacity=".7"/></svg>`;
+const BOSS=`<svg class="boss-svg" viewBox="0 0 120 120"><ellipse cx="60" cy="70" rx="44" ry="40" fill="#8b3a62"/><ellipse cx="60" cy="74" rx="30" ry="22" fill="#5e2742"/><circle cx="44" cy="58" r="11" fill="#fff"/><circle cx="76" cy="58" r="11" fill="#fff"/><circle cx="46" cy="60" r="5" fill="#2a1020"/><circle cx="74" cy="60" r="5" fill="#2a1020"/><path d="M30 44 L52 52" stroke="#3a132a" stroke-width="5" stroke-linecap="round"/><path d="M90 44 L68 52" stroke="#3a132a" stroke-width="5" stroke-linecap="round"/><path d="M42 86 Q60 98 78 86" stroke="#2a1020" stroke-width="4" fill="#c44" stroke-linecap="round"/><rect x="50" y="100" width="20" height="16" rx="3" fill="#fff" opacity=".85"/></svg>`;
+
+/* ============================== ENGINE ============================== */
+let stageIdx=0, subIdx=0, attempts=0;
+
+const STAGES=[
+  {id:'intro'},
+  {id:'memory',title:'Этап 1/6'},
+  {id:'mcq',title:'Этап 2/6'},
+  {id:'tf',title:'Этап 3/6'},
+  {id:'typed',title:'Этап 4/6'},
+  {id:'builder',title:'Этап 5/6'},
+  {id:'boss',title:'БОСС'},
+  {id:'victory'}
+];
+
+function setPill(t){stagePill.textContent=t;}
+function nextStage(){stageIdx++;subIdx=0;attempts=0;render();}
+
+function render(){
+  const st=STAGES[stageIdx];
+  if(st.title)setPill(st.title);
+  if(st.id==='intro')return renderIntro();
+  if(st.id==='memory')return renderMemory();
+  if(st.id==='mcq')return renderMCQ();
+  if(st.id==='tf')return renderTF();
+  if(st.id==='typed')return renderTyped();
+  if(st.id==='builder')return renderBuilder();
+  if(st.id==='boss')return renderBoss();
+  if(st.id==='victory')return renderVictory();
+}
+
+/* ---------- INTRO ---------- */
+function renderIntro(){
+  setPill('Старт');
+  main.innerHTML=`<div class="card center">
+    ${CHEF}
+    <h1>Chef's Quest 🍲<br>Quantifiers</h1>
+    <p class="lead" style="margin-top:10px">Помоги шеф-повару приготовить идеальное блюдо!
+    Каждый правильный ответ добавляет <b>+10 очков</b> и наполняет шкалу <b>«Вкус»</b>.
+    В конце тебя ждёт <b>Голодный Критик</b> — победи его!</p>
+    <p class="small" style="margin-top:10px">6 этапов · разные механики · автопроверка</p>
+    <div class="btn-row"><button class="btn" id="startBtn">Начать игру →</button></div>
+  </div>`;
+  document.getElementById('startBtn').onclick=nextStage;
+}
+
+/* ---------- MEMORY ---------- */
+let memFirst=null, memLock=false, memMatched=0;
+function renderMemory(){
+  memFirst=null;memLock=false;memMatched=0;
+  let cards=[];
+  memoryPairs.forEach((p,i)=>{cards.push({pid:i,txt:p[0]});cards.push({pid:i,txt:p[1]});});
+  cards=shuffle(cards);
+  main.innerHTML=`<div class="card">
+    <h2>🃏 Найди пары</h2>
+    <p class="lead">Открывай по две карточки: соедини английское выражение с переводом.</p>
+    <div class="mem-grid" id="memGrid"></div>
+  </div>`;
+  const grid=document.getElementById('memGrid');
+  cards.forEach((c,idx)=>{
+    const el=document.createElement('div');
+    el.className='mem-card';el.dataset.pid=c.pid;el.dataset.idx=idx;
+    el.innerHTML=`<div class="mem-inner"><div class="mem-face mem-front">🍳</div><div class="mem-face mem-back">${c.txt}</div></div>`;
+    el.onclick=()=>memClick(el);
+    grid.appendChild(el);
+  });
+}
+function memClick(el){
+  if(memLock||el.classList.contains('flip')||el.classList.contains('matched'))return;
+  el.classList.add('flip');
+  if(!memFirst){memFirst=el;return;}
+  memLock=true;
+  const a=memFirst,b=el;
+  if(a.dataset.pid===b.dataset.pid){
+    setTimeout(()=>{
+      a.classList.add('matched');b.classList.add('matched');
+      const r=b.getBoundingClientRect(),app=document.getElementById('app').getBoundingClientRect();
+      addPoint(r.left-app.left+r.width/2,r.top-app.top);
+      showGood('ВЕРНО! +10 ⭐️');
+      memFirst=null;memLock=false;memMatched++;
+      if(memMatched===memoryPairs.length)setTimeout(nextStage,1000);
+    },350);
+  }else{
+    setTimeout(()=>{a.classList.remove('flip');b.classList.remove('flip');memFirst=null;memLock=false;},900);
+  }
+}
+
+/* ---------- generic option flow (MCQ + TF + BOSS) ---------- */
+function optionButtons(container,opts,correct,onResult){
+  const grid=document.createElement('div');
+  grid.className='opts'+(opts.length<=2?' two':'');
+  opts.forEach(o=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=o;
+    b.onclick=()=>{
+      [...grid.children].forEach(c=>c.disabled=true);
+      if(o===correct){b.classList.add('ok');onResult(true,b);}
+      else{b.classList.add('bad');
+        [...grid.children].forEach(c=>{if(c.textContent===correct)c.classList.add('ok');});
+        onResult(false,b);}
+    };
+    grid.appendChild(b);
+  });
+  container.appendChild(grid);
+}
+
+/* ---------- MCQ ---------- */
+function renderMCQ(){
+  const q=mcq[subIdx];
+  main.innerHTML=`<div class="card">
+    <h2>🥘 Выбери нужное слово (${subIdx+1}/${mcq.length})</h2>
+    <div class="sentence">${q.s.replace('___','<span class="blank">?</span>')}</div>
+  </div>`;
+  const card=main.querySelector('.card');
+  optionButtons(card,shuffle(q.o),q.a,(ok,btn)=>{
+    if(ok){const r=btn.getBoundingClientRect(),app=document.getElementById('app').getBoundingClientRect();
+      addPoint(r.left-app.left+r.width/2,r.top-app.top);showGood('ВЕРНО! +10 ⭐️');
+      setTimeout(advanceMCQ,1300);}
+    else{showExplain(q.a,q.e,advanceMCQ);}
+  });
+}
+function advanceMCQ(){subIdx++;if(subIdx<mcq.length)renderMCQ();else nextStage();}
+
+/* ---------- TRUE / FALSE ---------- */
+function renderTF(){
+  const q=tf[subIdx];
+  main.innerHTML=`<div class="card">
+    <h2>✅ Правда или ложь? (${subIdx+1}/${tf.length})</h2>
+    <div class="sentence">${q.s}</div>
+  </div>`;
+  const card=main.querySelector('.card');
+  const grid=document.createElement('div');grid.className='opts two';
+  [['TRUE',true],['FALSE',false]].forEach(([label,val])=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=label;
+    b.onclick=()=>{
+      [...grid.children].forEach(c=>c.disabled=true);
+      const correctLabel=q.t?'TRUE':'FALSE';
+      if(val===q.t){b.classList.add('ok');
+        const r=b.getBoundingClientRect(),app=document.getElementById('app').getBoundingClientRect();
+        addPoint(r.left-app.left+r.width/2,r.top-app.top);showGood('ВЕРНО! +10 ⭐️');
+        setTimeout(advanceTF,1300);}
+      else{b.classList.add('bad');
+        [...grid.children].forEach(c=>{if(c.textContent===correctLabel)c.classList.add('ok');});
+        showExplain(correctLabel,q.e,advanceTF);}
+    };
+    grid.appendChild(b);
+  });
+  card.appendChild(grid);
+}
+function advanceTF(){subIdx++;if(subIdx<tf.length)renderTF();else nextStage();}
+
+/* ---------- TYPED ---------- */
+function renderTyped(){
+  attempts=0;
+  const q=typed[subIdx];
+  main.innerHTML=`<div class="card">
+    <h2>⌨️ Впиши слово (${subIdx+1}/${typed.length})</h2>
+    <div class="sentence">${q.s.replace('___','<span class="blank">…</span>')}</div>
+    <p class="hint center">${q.hint}</p>
+    <div class="typed-row">
+      <input type="text" id="tin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="...">
+      <button class="btn" id="tcheck">Проверить</button>
+    </div>
+    <p class="small center" id="tnote"></p>
+  </div>`;
+  const inp=document.getElementById('tin');
+  const check=()=>{
+    const val=norm(inp.value);
+    if(!val)return;
+    const ok=q.accept.map(norm).includes(val);
+    if(ok){inp.style.borderColor='#3aaf3a';
+      const r=inp.getBoundingClientRect(),app=document.getElementById('app').getBoundingClientRect();
+      addPoint(r.left-app.left+r.width/2,r.top-app.top);showGood('ВЕРНО! +10 ⭐️');
+      document.getElementById('tcheck').disabled=true;inp.disabled=true;
+      setTimeout(advanceTyped,1300);
+    }else{
+      attempts++;
+      if(attempts<2){inp.style.borderColor='#e04949';showBadToast();
+        document.getElementById('tnote').textContent='Осталась 1 попытка';inp.select();}
+      else{inp.style.borderColor='#e04949';document.getElementById('tcheck').disabled=true;inp.disabled=true;
+        showExplain(q.show,q.e,advanceTyped);}
+    }
+  };
+  document.getElementById('tcheck').onclick=check;
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+  inp.focus();
+}
+function advanceTyped(){subIdx++;if(subIdx<typed.length)renderTyped();else nextStage();}
+
+/* ---------- SENTENCE BUILDER ---------- */
+let curOrder=[];
+function renderBuilder(){
+  attempts=0;curOrder=[];
+  const q=builder[subIdx];
+  let pool=shuffle(q.c);
+  while(pool.join('|')===q.c.join('|'))pool=shuffle(q.c);
+  main.innerHTML=`<div class="card">
+    <h2>🧩 Собери предложение (${subIdx+1}/${builder.length})</h2>
+    <p class="lead center">${q.ru}</p>
+    <div class="build-target" id="slot"></div>
+    <div class="pool" id="pool"></div>
+    <div class="btn-row">
+      <button class="btn ghost" id="reset">Сбросить</button>
+      <button class="btn" id="bcheck">Проверить</button>
+    </div>
+    <p class="small center" id="bnote"></p>
+  </div>`;
+  const poolEl=document.getElementById('pool');
+  pool.forEach((w,i)=>{
+    const c=document.createElement('div');c.className='chip';c.textContent=w;c.dataset.w=w;
+    c.onclick=()=>{if(c.classList.contains('used'))return;c.classList.add('used');curOrder.push(w);drawSlot();};
+    poolEl.appendChild(c);
+  });
+  document.getElementById('reset').onclick=()=>{curOrder=[];[...poolEl.children].forEach(c=>c.classList.remove('used'));drawSlot();};
+  document.getElementById('bcheck').onclick=checkBuild;
+}
+function drawSlot(){
+  const slot=document.getElementById('slot');slot.innerHTML='';
+  curOrder.forEach(w=>{const c=document.createElement('div');c.className='chip inSlot';c.textContent=w;slot.appendChild(c);});
+}
+function checkBuild(){
+  const q=builder[subIdx];
+  if(curOrder.length<q.c.length){document.getElementById('bnote').textContent='Используй все слова';return;}
+  if(curOrder.join('|')===q.c.join('|')){
+    const slot=document.getElementById('slot');slot.style.borderColor='#3aaf3a';
+    const r=slot.getBoundingClientRect(),app=document.getElementById('app').getBoundingClientRect();
+    addPoint(r.left-app.left+r.width/2,r.top-app.top);showGood('ВЕРНО! +10 ⭐️');
+    document.getElementById('bcheck').disabled=true;
+    setTimeout(advanceBuilder,1300);
+  }else{
+    attempts++;
+    if(attempts<2){showBadToast();document.getElementById('bnote').textContent='Не тот порядок. Осталась 1 попытка — нажми «Сбросить».';}
+    else{document.getElementById('bcheck').disabled=true;showExplain(q.c.join(' '),'Запомни порядок слов в этом предложении.',advanceBuilder);}
+  }
+}
+function advanceBuilder(){subIdx++;if(subIdx<builder.length)renderBuilder();else nextStage();}
+
+/* ---------- BOSS ---------- */
+let bossHP=6, bossPoolShuffled=[], bossQi=0;
+function renderBoss(){
+  bossHP=6;bossPoolShuffled=shuffle(bossPool);bossQi=0;
+  bossStep();
+}
+function bossStep(){
+  if(bossHP<=0)return nextStage();
+  const q=bossPoolShuffled[bossQi%bossPoolShuffled.length];
+  main.innerHTML=`<div class="card boss-stage">
+    <h2>👹 Голодный Критик</h2>
+    ${BOSS}
+    <div class="hp-track"><div class="hp-fill" id="hpFill" style="width:${(bossHP/6)*100}%"></div></div>
+    <p class="small">HP: ${bossHP} — отвечай верно, чтобы наносить удары!</p>
+    <div class="sentence">${q.s.replace('___','<span class="blank">?</span>')}</div>
+  </div>`;
+  const card=main.querySelector('.card');
+  optionButtons(card,shuffle(q.o),q.a,(ok,btn)=>{
+    if(ok){
+      const r=btn.getBoundingClientRect(),app=document.getElementById('app').getBoundingClientRect();
+      addPoint(r.left-app.left+r.width/2,r.top-app.top);
+      bossHP=Math.max(0,bossHP-1);
+      document.getElementById('hpFill').style.width=(bossHP/6)*100+'%';
+      document.querySelector('.boss-svg').classList.add('shake');
+      showGood('УДАР! −1 HP ⚔️');
+      bossQi++;setTimeout(bossStep,1200);
+    }else{
+      bossHP=Math.min(6,bossHP+1);
+      document.getElementById('hpFill').style.width=(bossHP/6)*100+'%';
+      showExplain(q.a,q.e+' Критик подлечился (+1 HP)!',()=>{bossQi++;bossStep();});
+    }
+  });
+}
+
+/* ---------- VICTORY ---------- */
+function renderVictory(){
+  setPill('Финиш');
+  let stars=1;if(score>=300)stars=3;else if(score>=220)stars=2;
+  const starHtml=[1,2,3].map(i=>`<span class="${i<=stars?'':'star-dim'}">⭐</span>`).join('');
+  let msg=stars===3?'Идеальное блюдо! 🍽️':stars===2?'Очень вкусно! 🍲':'Готово! Можно лучше 💪';
+  main.innerHTML=`<div class="card center">
+    ${CHEF}
+    <h1>Победа!</h1>
+    <div class="stars">${starHtml}</div>
+    <p class="lead" style="margin-top:8px">${msg}</p>
+    <p class="lead">Очки: <b style="color:#e8820c">${score}</b> · Вкус: <b>${Math.min(100,Math.round(correctCount*FLAV_PER))}%</b></p>
+    <p class="small" style="margin-top:6px">3⭐ ≥300 · 2⭐ ≥220 · 1⭐ ≥140 (максимум 350)</p>
+    <div class="btn-row"><button class="btn" id="again">Играть снова</button></div>
+  </div>`;
+  document.getElementById('again').onclick=()=>{
+    score=0;correctCount=0;scoreEl.textContent=0;flavFill.style.width='0%';flavPct.textContent='0%';bgFor(0);
+    stageIdx=0;subIdx=0;render();
+  };
+}
+
+/* ============================== GO ============================== */
+bgFor(0);
+render();
+</script>
+</body>
+</html>
